@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>코딩 체험 부스 통합 관리자 페이지</title>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        header h2 {
+            margin: 0;
+            color: #1a4d8c;
+        }
+        button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        #admin-login-btn {
+            background-color: #1a4d8c;
+            color: white;
+        }
+        #admin-login-btn:hover {
+            background-color: #0056b3;
+        }
+        #admin-logout-btn {
+            background-color: #f7f7f7;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+        .login-form input {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        h3 {
+            border-left: 5px solid #1a4d8c;
+            padding-left: 10px;
+            margin-top: 0;
+            color: #333;
+        }
+        #queue-status-bar {
+            background-color: #e6f7ff;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #1a4d8c;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        /* 팝업 스타일 */
+        #reservation-modal {
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(0, 0, 0, 0.5); 
+            z-index: 1000; 
+            justify-content: center; 
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="admin-login-area" class="container">
+        <h1>운영 본부 로그인</h1>
+        <p>승인된 계정으로만 접근 가능합니다.</p>
+        <div class="login-form">
+            <input type="email" id="admin-email" placeholder="운영자 이메일">
+            <input type="password" id="admin-password" placeholder="비밀번호">
+            <button id="admin-login-btn">로그인</button>
+            <p id="login-error-msg" style="color: red;"></p>
+        </div>
+    </div>
+
+    <div id="admin-dashboard" class="container" style="display: none;">
+        <header>
+            <h2>통합 부스 관리 대시보드 (CR1)</h2>
+            <button id="admin-logout-btn">로그아웃</button>
+        </header>
+
+        <section id="reservation-status-area">
+            <h3>✅ 사전 예약 현황 (시간대별 잔여 인원)</h3>
+            <div id="slot-status-list">
+                <p>로딩 중...</p>
+            </div>
+            <p style="font-size: 0.8em; color: #555;">※ 잔여 인원은 예약된 인원만 고려하며, 현장 대기 인원을 포함하지 않습니다.</p>
+        </section>
+
+        <section id="queue-management-area">
+            <h3>👥 현장 대기열 관리</h3>
+            <div id="queue-status-bar">
+                현재 호출 번호: <span id="current-call-number">N/A</span> | 대기 인원: <span id="waiting-count">N/A</span>명
+            </div>
+            <div id="queue-action-buttons">
+                <button id="call-next-btn" style="background-color: #27ae60; color: white;">다음 순번 호출</button>
+                <button id="reset-queue-btn" style="background-color: #e74c3c; color: white;">대기열 초기화 (위험)</button>
+            </div>
+            
+            <h4 style="margin-top: 20px;">대기 명단</h4>
+            <table id="waiting-list-table">
+                <thead>
+                    <tr>
+                        <th>순번</th>
+                        <th>이름</th>
+                        <th>인원</th>
+                        <th>등록 시간</th>
+                        <th>조치</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </section>
+        
+        <section id="reserved-list-area">
+            <h3>📅 오늘 예약 명단 조회</h3>
+            <button id="load-reservations-btn">전체 예약 명단 불러오기</button>
+            <table id="reserved-list-table">
+                <thead>
+                    <tr>
+                        <th>예약 번호</th>
+                        <th>이름</th>
+                        <th>학번</th>
+                        <th>시간</th> </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+            <p style="font-size: 0.8em; color: #555; margin-top: 10px;">※ 명단을 클릭하면 상세 정보 확인 및 체크인 처리가 가능합니다.</p>
+        </section>
+    </div>
+
+<div id="reservation-modal">
+        <div style="background-color: white; padding: 25px; border-radius: 8px; max-width: 400px; width: 90%; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);">
+            <h3 id="modal-title" style="margin-top: 0; color: #1a4d8c;">예약 상세 정보</h3>
+            <div id="modal-details-content">
+                </div>
+            <div style="margin-top: 20px; text-align: right;">
+                <button id="modal-send-email-btn" style="background-color: #f39c12; color: white; margin-right: 5px;">📧 알림 이메일 발송</button>
+                <button id="modal-checkin-btn" style="background-color: #3cb371; color: white; margin-right: 5px;">✅ 체크인 처리</button>
+                <button id="modal-close-btn" style="background-color: #ddd; color: #333;">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script> 
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script> 
+
+    <script src="script/index.js"></script>
+</body>
+</html>
