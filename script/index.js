@@ -3,8 +3,8 @@
 // ----------------------------------------------------
 const BOOTH_ID = 'CR1'; 
 
-// 🚨🚨🚨 Netlify Functions API 엔드포인트 (유지) 🚨🚨🚨
-const API_ENDPOINT = 'https://sebticket-notice.netlify.app/.netlify/functions/sendReservationEmail';
+// index.js (클라이언트)의 API_ENDPOINT 수정
+const API_ENDPOINT = 'https://3491349131.netlify.app/api/sendReservationEmail';
 
 
 const loginArea = document.getElementById('admin-login-area');
