@@ -196,6 +196,20 @@ async function initializeAdminFirebase() {
             });
         });
 
+        // 다음 대기자 호출 버튼 클릭 시
+        document.getElementById('call-next-waiting-btn').addEventListener('click', () => {
+            database.ref(`booths/${BOOTH_ID}/queue/current_call`).transaction(current => {
+            return (current || 0) + 1;
+    }, (error, committed, snapshot) => {
+        if (committed) {
+            const calledNumber = snapshot.val();
+            alert(`${calledNumber}번 학생을 호출했습니다.`);
+            
+            // 💡 선택사항: 호출 시 해당 학생에게 이메일이나 문자를 보내고 싶다면
+            // 여기서 해당 번호의 이메일/전화번호 정보를 찾아 server.js에 신호를 보낼 수 있습니다.
+        }
+    });
+});
         // 대기열 초기화
         document.getElementById('reset-queue-btn').addEventListener('click', () => {
              if (!database) { console.error("Database not initialized."); return; }
