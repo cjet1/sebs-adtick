@@ -4,7 +4,7 @@
 const BOOTH_ID = 'CR1'; 
 
 // index.js (클라이언트)의 API_ENDPOINT 수정
-const API_ENDPOINT = 'https://3491349131.netlify.app/api/sendReservationEmail';
+const API_ENDPOINT = '';
 
 
 const loginArea = document.getElementById('admin-login-area');
