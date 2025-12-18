@@ -267,66 +267,48 @@ async function initializeAdminFirebase() {
 
 // 🚨 이메일 발송을 위한 API 호출 함수
 async function sendReservationEmail(reservation) {
-    if (!reservation.email) {
+    if (!reservation.email || reservation.email === 'NO_EMAIL') {
         alert("🚨 이 예약 건에는 이메일 정보가 없습니다. 발송할 수 없습니다.");
         return;
     }
 
-    const confirmMessage = `${reservation.name}님(${reservation.email})에게 예약 알림 메일을 발송하시겠습니까?\n\n시간: ${reservation.timeSlot}`;
-    if (!confirm(confirmMessage)) {
-        return;
-    }
+    const confirmMessage = `${reservation.name}님(${reservation.email})에게 예약 알림 메일을 발송하시겠습니까?`;
+    if (!confirm(confirmMessage)) return;
 
+    // UI 상태 업데이트
     modalSendEmailBtn.disabled = true;
     const originalText = modalSendEmailBtn.textContent;
-    modalSendEmailBtn.textContent = '발송 중... (잠시만 기다려주세요)';
-    
-    // 🚨🚨🚨 디버깅 로그 1: API 호출 직전 확인 🚨🚨🚨
-    console.log("DEBUG: Email 발송 시작. API 호출 주소:", API_ENDPOINT);
-    console.log("DEBUG: 전송 데이터:", reservation);
+    modalSendEmailBtn.textContent = '발송 요청 중...';
 
-    // 🚨 서버 API 호출
+    console.log("DEBUG: Firebase를 통해 발송 신호 전달 시작", reservation.reservationKey);
+
+    // 🚀 [핵심] Firebase 데이터베이스의 해당 예약 정보를 업데이트
+    // server.js의 .on('child_changed')가 이 변경을 감지함
     try {
-        const response = await fetch(API_ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                to: reservation.email,
-                name: reservation.name,
-                reservationId: reservation.reservationId || reservation.reservationKey.substring(0, 8),
-                timeSlot: reservation.timeSlot,
-                boothName: `코딩 체험 부스 (${reservation.boothId})`,
-            })
+        await database.ref(`reservations/${reservation.reservationKey}`).update({
+            requestEmail: true, // 서버가 이 값을 보고 메일을 보냄
+            requestTimestamp: firebase.database.ServerValue.TIMESTAMP // 요청 시간 기록
         });
 
-        // 🚨🚨🚨 디버깅 로그 2: API 응답 상태 확인 🚨🚨🚨
-        console.log("DEBUG: API 응답 상태:", response.status, response.statusText);
-
-
-        if (response.ok) {
-            alert('📧 알림 이메일이 성공적으로 발송되었습니다.');
-        } else {
-            const errorData = await response.json().catch(() => ({ message: response.statusText }));
-            alert(`이메일 발송 실패: ${errorData.message || '서버 오류 발생'}`);
-        }
+        console.log("DEBUG: Firebase 업데이트 성공. server.js 감지 대기 중.");
+        alert('📧 이메일 발송 요청이 전달되었습니다. (서버에서 발송 처리됨)');
+        
     } catch (error) {
-        // 🚨🚨🚨 디버깅 로그 3: 네트워크/CORS 오류 확인 🚨🚨🚨
-        console.error("DEBUG: Email API Call Error:", error);
-        alert('네트워크 또는 CORS 오류로 이메일 발송에 실패했습니다.');
+        console.error("DEBUG: Firebase 업데이트 실패:", error);
+        alert('발송 요청 중 오류가 발생했습니다: ' + error.message);
     } finally {
         modalSendEmailBtn.disabled = false;
         modalSendEmailBtn.textContent = originalText;
-        console.log("DEBUG: 발송 시도 종료. 버튼 재활성화.");
     }
 }
 
-// 예약 상세 정보 팝업 표시 함수
-function showReservationDetails(reservationData, reservationKey) { // key는 Firebase 고유 키
+// ----------------------------------------------------
+// 예약 상세 정보 팝업 표시 함수 (연계 유지)
+// ----------------------------------------------------
+function showReservationDetails(reservationData, reservationKey) {
     const statusText = reservationData.status || '예약 완료';
-    // 🚨 reservationId 필드 값 사용
     const displayId = reservationData.reservationId || reservationKey.substring(0, 8); 
     
-    // 상세 정보 HTML 구성
     modalDetailsContent.innerHTML = `
         <p><strong>예약 번호:</strong> ${displayId}</p>
         <p><strong>예약 상태:</strong> <span style="font-weight: bold; color: ${statusText === '체크인✅' ? 'green' : (statusText === 'cancelled' ? 'red' : 'blue')}">${statusText}</span></p>
@@ -337,7 +319,7 @@ function showReservationDetails(reservationData, reservationKey) { // key는 Fir
         <p><strong>이메일:</strong> ${reservationData.email}</p>
     `;
     
-    // 체크인 버튼 활성화/비활성화 및 이벤트 재등록
+    // 체크인 버튼 설정
     if (statusText === '체크인✅') {
         modalCheckinBtn.textContent = '이미 체크인 완료됨';
         modalCheckinBtn.disabled = true;
@@ -346,15 +328,14 @@ function showReservationDetails(reservationData, reservationKey) { // key는 Fir
         modalCheckinBtn.textContent = '✅ 체크인 처리';
         modalCheckinBtn.disabled = false;
         modalCheckinBtn.style.backgroundColor = '#3cb371';
-        // 🚨 새 이벤트 등록: Firebase 고유 키(reservationKey) 전달
-        modalCheckinBtn.onclick = () => handleReservationAction(reservationKey, '체크인');
+        modalCheckinBtn.onclick = () => handleReservationAction(reservationKey, '체크인✅');
     }
 
-    // 🚨🚨🚨 이 부분에 이메일 발송 버튼 이벤트를 추가합니다! 🚨🚨🚨
+    // 📧 이메일 발송 버튼에 이벤트 연결 (전달받은 reservationKey 포함)
     const reservationWithKey = { ...reservationData, reservationKey };
     modalSendEmailBtn.onclick = () => sendReservationEmail(reservationWithKey);
 
-    reservationModal.style.display = 'flex'; // 팝업 보이기
+    reservationModal.style.display = 'flex';
 }
 
         // 팝업 닫기 버튼 이벤트
