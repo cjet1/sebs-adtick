@@ -207,6 +207,7 @@ async function loadReservationList() {
                     row.insertCell(1).textContent = reservation.name;      
                     row.insertCell(2).textContent = reservation.studentId; 
                     row.insertCell(3).textContent = reservation.timeSlot;  
+                    row.insertCell(4).textContent = reservation.partySize;
                 }
             });
         });
