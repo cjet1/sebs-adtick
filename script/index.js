@@ -191,25 +191,59 @@ if (loadResBtn) {
 async function loadReservationList() {
     if (!database) return;
     const tableBody = document.querySelector('#reserved-list-table tbody');
-    tableBody.innerHTML = '<tr><td colspan="4">로딩 중...</td></tr>'; 
+    tableBody.innerHTML = '<tr><td colspan="5">로딩 중...</td></tr>'; 
     
     database.ref('reservations').once('value')
         .then(snapshot => {
             tableBody.innerHTML = '';
+            
+            // 1. 데이터를 배열로 변환하고 필터링
+            const reservationArray = [];
             snapshot.forEach(childSnapshot => {
-                const reservationKey = childSnapshot.key; 
-                const reservation = childSnapshot.val();
-                if (reservation.boothId === BOOTH_ID) {
-                    const row = tableBody.insertRow();
-                    row.onclick = () => showReservationDetails(reservation, reservationKey);
-                    row.style.cursor = 'pointer'; 
-                    row.insertCell(0).textContent = reservation.reservationId || reservationKey.substring(0, 8);
-                    row.insertCell(1).textContent = reservation.name;      
-                    row.insertCell(2).textContent = reservation.studentId; 
-                    row.insertCell(3).textContent = reservation.timeSlot;  
-                    row.insertCell(4).textContent = reservation.partySize;
+                const data = childSnapshot.val();
+                if (data.boothId === BOOTH_ID) {
+                    reservationArray.push({
+                        ...data,
+                        key: childSnapshot.key
+                    });
                 }
             });
+
+            // 2. 시간순 정렬 로직 추가 (09:30, 10:10 순서)
+            reservationArray.sort((a, b) => {
+                const timeA = parseInt(a.timeSlot.replace(':', ''), 10);
+                const timeB = parseInt(b.timeSlot.replace(':', ''), 10);
+                return timeA - timeB;
+            });
+
+            // 3. 정렬된 배열을 바탕으로 테이블 생성
+            if (reservationArray.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5">예약 내역이 없습니다.</td></tr>';
+                return;
+            }
+
+            reservationArray.forEach(reservation => {
+                const reservationKey = reservation.key; 
+                const row = tableBody.insertRow();
+                
+                row.onclick = () => showReservationDetails(reservation, reservationKey);
+                row.style.cursor = 'pointer'; 
+                
+                row.insertCell(0).textContent = reservation.reservationId || reservationKey.substring(0, 8);
+                row.insertCell(1).textContent = reservation.name;      
+                row.insertCell(2).textContent = reservation.studentId; 
+                row.insertCell(3).textContent = reservation.timeSlot;  
+                row.insertCell(4).textContent = reservation.partySize;
+                
+                // 체크인 상태에 따라 행 배경색 변경 (선택 사항)
+                if (reservation.status === '체크인✅') {
+                    row.style.backgroundColor = '#f1f8ff';
+                }
+            });
+        })
+        .catch(error => {
+            console.error("Load Error:", error);
+            tableBody.innerHTML = '<tr><td colspan="5">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>';
         });
 }
 
